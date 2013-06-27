@@ -32,6 +32,10 @@ boolean same_code = false;
 int data_number = 0; //which command is being decoded. 0 is NUMBER
 /*End IR Declarations*/
 
+/*Recieved signal handling declarations*/
+volatile boolean recieve_commands = false; //determines if NUMBER has been recieved before command
+/*End recieved signal handling declarations*/
+
 int counter = 0;
 
 void setup(void) {
@@ -39,12 +43,17 @@ void setup(void) {
   Serial.begin(9600);   
   
   pinMode(buttonPin, INPUT);
-  pinMode(ledPin, OUTPUT);  
+  pinMode(ledPin, OUTPUT); 
+  digitalWrite(ledPin,LOW); 
   pinMode(motor_neg, OUTPUT); 
   pinMode(motor_pos, OUTPUT); 
   
   // initialize the IR Reciever interrupt to occur on both rising and falling edges
   attachInterrupt(IRInterrupt,IR_interrupt_handler, CHANGE);
+  
+  //initialize the timer interrupt
+   //run for maximum period of interrupt 8.3 seconds
+  //Timer1.stop();//stop the interrupt. Re-init when NUMBER is recieved 
   
   //read the co currently stored in EEPROM
   EEPROM_readAnything(0,NUMBER_Data); 
@@ -152,35 +161,65 @@ void loop(){
       recieved_signal_handler(recieved_signal);
     }
     counter ++;
+   // Serial.print("counter= ");Serial.println(counter);
     delay(1000);
-    //Serial.print("counter= ");Serial.println(counter);
+    
   }//end else
   
 }//end loop
 
+void timer_handler(){
+  /*sets the recieve_commands to true*/ 
+  recieve_commands = false;
+  Serial.println("Time's up");
+  Timer1.stop();
+}
+
 void recieved_signal_handler(int the_recieved_signal){
-  /*determines how recieved signals are handled, respectively*/
+  /*Determines how recieved signals are handled, respectively*/
   switch (the_recieved_signal){
+    case 0:{
+      Serial.println("No Match");
+      recieve_commands = false;
+      Timer1.stop();
+      break;
+    }
     case 1:{
       Serial.println("Number");
+      recieve_commands = true;
+      //Timer1.restart();
+      Timer1.initialize(8000000);
+      Timer1.attachInterrupt(timer_handler,8000000); //attach timer handler
       break;
     }
     case 2:{
-      Serial.println("Up");
-      digitalWrite(motor_neg,HIGH);
-      digitalWrite(motor_pos,LOW);
+      if (recieve_commands == true){
+        Serial.println("Up");
+        digitalWrite(motor_neg,HIGH);
+        digitalWrite(motor_pos,LOW);
+        recieve_commands = true;
+        Timer1.restart();
+      }
       break;
     }
     case 3:{
-      Serial.println("Down");
-      digitalWrite(motor_neg,LOW);
-      digitalWrite(motor_pos,HIGH);
+      if (recieve_commands == true){
+        Serial.println("Down");
+        digitalWrite(motor_neg,LOW);
+        digitalWrite(motor_pos,HIGH);
+        recieve_commands = true;
+        Timer1.restart();
+      }
       break;
     }
     case 4:{
-      Serial.println("Stop");
-      digitalWrite(motor_neg,LOW);
-      digitalWrite(motor_pos,LOW);
+      if (recieve_commands == true){
+        Serial.println("Stop");
+        digitalWrite(motor_neg,LOW);
+        digitalWrite(motor_pos,LOW);
+        recieve_commands = true;
+        Timer1.restart();
+      }
       break;
     }
   }//end case
