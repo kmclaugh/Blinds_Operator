@@ -4,6 +4,7 @@
 /*Pin delcarations*/
 #define IRInterrupt   0 //IR Detector Interrupt correspondes to pin 2
 const int buttonPin = 8;//the button pin
+#define BUTTON_LOGIC 0 //the voltage (Vss or Vdd) that corresponds to the button being pressed
 const int ledPin    = 13;
 const int motor_neg = 9;
 const int motor_pos = 10;
@@ -69,7 +70,7 @@ void loop(){
     wait_for_IR();
   }//end else if
   
-  else if (digitalRead(buttonPin)==1){
+  else if (digitalRead(buttonPin) == BUTTON_LOGIC){
     wait_while_encoding_EEPROM();
   }//end if read button pin
   
@@ -141,7 +142,7 @@ void Read_IR_Rountine(){
   boolean valid_signal = correctpulses();
   if (valid_signal == true){
     if (data_number != 0){//if button is pressed wait one seconds
-      if (digitalRead(buttonPin)==1){ //if button is still pressed than save new code to proper EEPROM
+      if (digitalRead(buttonPin)==BUTTON_LOGIC){ //if button is still pressed than save new code to proper EEPROM
         switch(data_number){
           case 1:{
             Serial.println("Number");
@@ -187,15 +188,15 @@ void Read_IR_Rountine(){
 
 void wait_while_encoding_EEPROM(){
   /*Handles writing in EEPROM sitiutations between IR interrupts*/
-  if (digitalRead(buttonPin)==1 && data_number == 0){
+  if (digitalRead(buttonPin)==BUTTON_LOGIC && data_number == 0){
     blink_led(3);
-    if (digitalRead(buttonPin)==1 && data_number == 0){
+    if (digitalRead(buttonPin)==BUTTON_LOGIC && data_number == 0){
       Serial.println("ready");
       data_number = 1;
     }//end if button 2
   }//end if button 1
-  if (digitalRead(buttonPin)==1 && data_number != 0){
-    while(IR_state == 0 && digitalRead(buttonPin)==1){
+  if (digitalRead(buttonPin)==BUTTON_LOGIC && data_number != 0){
+    while(IR_state == 0 && digitalRead(buttonPin)==BUTTON_LOGIC){
       delay(100);
     }//end while
   }//end if data_number != 0
@@ -250,6 +251,7 @@ int write_signal_to_EEPROM(int addr){
   /*decodes one COMMAND array of IR codes into an EEPROM address, addr, 
   and stores addr into address addr_marker for later use*/
   unsigned int bytes;
+    print_signal(signal);
     bytes = EEPROM_writeAnything(addr,signal);//COMMAND array address stored at address addr
     addr = addr + bytes; //next address
     Serial.print("bytes: ");
@@ -369,7 +371,7 @@ boolean correctpulses(){
   }//end else
 }//end correct pulses
 
-void print_signal(uint16_t print_signal[]) {
+void print_signal(volatile uint16_t print_signal[]) {
  /*print IR code array data for debug only. Must use correct array in this function manually*/
   Serial.println("uint16_t print_signal IRsignal[] = {");
   Serial.println("// LOW, HIGH Voltage (in 10's of microseconds)");
